@@ -1,0 +1,258 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Home - BiblioTrack{% endblock %}
+
+{% block content %}
+<div class="hero-section section text-center py-5 mb-5" style="background: linear-gradient(135deg, #1B263B 0%, #415A77 100%); color: white; border-radius: 20px;">
+    <div class="container">
+        <h1 class="display-4 fw-bold mb-3">Discover Books Smarter with AI</h1>
+        <p class="lead mb-4">Your ultimate destination for discovering, buying, and selling books. Powered by AI to enhance your reading experience</p>
+        <a href="{% url 'book_list' %}" class="btn btn-warning btn-lg px-5 py-3 fw-bold" style="background: #E0A96D; border: none; color: #1B263B;">Browse Now</a>
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <form class="d-flex mb-3" method="GET" action="{% url 'book_list' %}">
+                    <input class="form-control me-2" type="search" name="q" placeholder="Search books by title, author, or genre..." aria-label="Search" style="border-radius: 25px; border: none;">
+                    <button class="btn btn-light" type="submit" style="border-radius: 25px;">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </form>
+                <div class="mt-3">
+                    <div class="input-group">
+                        <input type="file" id="visualSearch" accept="image/*" class="form-control" style="border-radius: 25px 0 0 25px; border: none; background: rgba(255,255,255,0.9); display: none;">
+                        <label for="visualSearch" class="btn btn-outline-light" style="border-radius: 0 25px 25px 0;">
+                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/>
+                                <path d="M2 4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4H2zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/>
+                            </svg>
+                            Visual Search
+                        </label>
+                    </div>
+                    <small class="text-light">Upload a book cover image for AI-powered visual search</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-12">
+        <div id="bookCarousel" class="carousel slide shadow-lg" data-bs-ride="carousel" style="border-radius: 20px; overflow: hidden;">
+            <div class="carousel-inner">
+                {% for book in featured_books %}
+                <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                    <img src="{% if book.cover_image_url %}{{ book.cover_image_url }}{% else %}https://via.placeholder.com/1200x500?text=Featured+Book{% endif %}" class="d-block w-100" alt="{{ book.title }}" style="height: 400px; object-fit: cover;">
+                    <div class="carousel-caption d-none d-md-block" style="background: rgba(0,0,0,0.5); border-radius: 10px;">
+                        <h3>{{ book.title }}</h3>
+                        <p class="mb-2">by {{ book.author }}</p>
+                        <div class="star-rating mb-2">
+                            {% for i in "12345"|make_list %}
+                                <i class="fas fa-star{% if book.rating < forloop.counter %}-half-alt{% endif %}"></i>
+                            {% endfor %}
+                            <span class="ms-1">{{ book.rating }}/5</span>
+                        </div>
+                        <a href="{% url 'book_detail' book.pk %}" class="btn btn-primary">View Details</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#bookCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon"></span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#bookCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon"></span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-12 text-center">
+        <h2 class="mb-4 fw-bold">Explore Categories</h2>
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <div class="card category-card text-center h-100" style="border: none; border-radius: 15px; background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); color: white;">
+                    <div class="card-body d-flex flex-column justify-content-center">
+                        <i class="fas fa-heart fa-3x mb-3"></i>
+                        <h5>Romance</h5>
+                        <a href="{% url 'book_list' %}?genre=Romance" class="btn btn-outline-light mt-auto">Explore</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card category-card text-center h-100" style="border: none; border-radius: 15px; background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333;">
+                    <div class="card-body d-flex flex-column justify-content-center">
+                        <i class="fas fa-search fa-3x mb-3"></i>
+                        <h5>Mystery</h5>
+                        <a href="{% url 'book_list' %}?genre=Mystery" class="btn btn-outline-primary mt-auto">Explore</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card category-card text-center h-100" style="border: none; border-radius: 15px; background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%); color: #333;">
+                    <div class="card-body d-flex flex-column justify-content-center">
+                        <i class="fas fa-flask fa-3x mb-3"></i>
+                        <h5>Science</h5>
+                        <a href="{% url 'book_list' %}?category=Science" class="btn btn-outline-primary mt-auto">Explore</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card category-card text-center h-100" style="border: none; border-radius: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <div class="card-body d-flex flex-column justify-content-center">
+                        <i class="fas fa-history fa-3x mb-3"></i>
+                        <h5>History</h5>
+                        <a href="{% url 'book_list' %}?category=History" class="btn btn-outline-light mt-auto">Explore</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="mb-4 text-center fw-bold">Top 10 Trending Books</h2>
+<div class="row">
+    {% for book in top_books %}
+    <div class="col-lg-2 col-md-3 col-sm-6 mb-4">
+        <div class="card book-card h-100 position-relative">
+            <div class="position-absolute top-0 start-0 bg-danger text-white px-2 py-1 rounded-end" style="font-size: 0.8rem;">
+                #{{ forloop.counter }}
+            </div>
+            {% if user.is_authenticated %}
+            <div class="position-absolute top-0 end-0 p-2">
+                <button class="wishlist-btn" data-book-id="{{ book.pk }}" onclick="toggleWishlist({{ book.pk }})">
+                    <i class="fas fa-heart"></i>
+                </button>
+            </div>
+            {% endif %}
+            <img src="{% if book.cover_image_url %}{{ book.cover_image_url }}{% else %}https://via.placeholder.com/200x300?text=Book+Cover{% endif %}" class="card-img-top" alt="{{ book.title }}">
+            <div class="card-body d-flex flex-column">
+                <h6 class="card-title">{{ book.title|truncatechars:20 }}</h6>
+                <p class="card-text text-muted small">by {{ book.author|truncatechars:15 }}</p>
+                <div class="star-rating mb-2">
+                    {% for i in "12345"|make_list %}
+                        <i class="fas fa-star{% if book.rating < forloop.counter %}-half-alt{% endif %}"></i>
+                    {% endfor %}
+                    <span class="ms-1 small">{{ book.rating }}</span>
+                </div>
+                <p class="card-text fw-bold text-primary">${{ book.price }}</p>
+                <div class="mt-auto">
+                    <a href="{% url 'book_detail' book.pk %}" class="btn btn-primary btn-sm w-100 mb-1">
+                        <i class="fas fa-eye"></i> View
+                    </a>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'add_to_cart' book.pk %}" class="btn btn-success btn-sm w-100">
+                        <i class="fas fa-cart-plus"></i> Add to Cart
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Chatbot -->
+<div class="fixed-bottom mb-3 me-3" style="right: 20px;">
+    <button class="btn btn-primary rounded-circle shadow-lg" id="chatbot-toggle" style="width: 60px; height: 60px; border: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <i class="fas fa-robot"></i>
+    </button>
+</div>
+
+{% include 'books/chatbot.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+function toggleWishlist(bookId) {
+    fetch('/books/' + bookId + '/add-to-wishlist/', {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            const btn = event.target.closest('.wishlist-btn');
+            btn.classList.toggle('active');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const chatbot = document.getElementById('chatbot');
+    const toggle = document.getElementById('chatbot-toggle');
+    const close = document.getElementById('chatbot-close');
+    const input = document.getElementById('chat-input');
+    const send = document.getElementById('chat-send');
+    const messages = document.getElementById('chat-messages');
+
+    toggle.addEventListener('click', () => chatbot.classList.toggle('d-none'));
+    close.addEventListener('click', () => chatbot.classList.add('d-none'));
+
+    send.addEventListener('click', sendMessage);
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    function sendMessage() {
+        const query = input.value.trim();
+        if (!query) return;
+
+        messages.innerHTML += `<p><strong>You:</strong> ${query}</p>`;
+        input.value = '';
+
+        fetch('/api/chatbot/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ query })
+        })
+        .then(response => response.json())
+        .then(data => {
+            messages.innerHTML += `<p><strong>AI:</strong> ${data.response}</p>`;
+            messages.scrollTop = messages.scrollHeight;
+        });
+    }
+
+    // Visual search
+    document.getElementById('visualSearch').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            fetch('/api/visual-search/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Visual search results:', data);
+                // Handle results (redirect to search results page or show results)
+                if (data.length > 0) {
+                    // Create a results display or redirect to book list with visual search results
+                    let resultsHtml = '<div class="alert alert-success mt-3">Visual search found similar books:</div>';
+                    data.forEach(book => {
+                        resultsHtml += `<div class="card mb-2"><div class="card-body"><h6>${book.title}</h6><p>by ${book.author}</p></div></div>`;
+                    });
+                    // You can append this to a results container or redirect
+                    console.log('Visual search results HTML:', resultsHtml);
+                } else {
+                    console.log('No similar books found');
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

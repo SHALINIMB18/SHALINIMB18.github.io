@@ -1,0 +1,38 @@
+<div class="card chatbot d-none" id="chatbot" style="position: fixed; bottom: 80px; right: 20px; width: 350px; z-index: 1000; border: none; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+    <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px 20px 0 0 !important; border: none;">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-robot me-2"></i>
+            <span class="fw-bold">AI Assistant</span>
+            <button class="btn-close btn-close-white ms-auto" id="chatbot-close"></button>
+        </div>
+    </div>
+    <div class="card-body" style="height: 350px; overflow-y: auto; background: #f8f9fa;" id="chat-messages">
+        <div class="message bot" style="background: white; color: #333; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <div class="d-flex align-items-center mb-2">
+                <div style="width: 30px; height: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; margin-right: 10px;">
+                    <i class="fas fa-robot fa-sm"></i>
+                </div>
+                <strong>AI Assistant</strong>
+            </div>
+            Hello! I'm your AI assistant. How can I help you discover amazing books today?
+        </div>
+    </div>
+    <div class="card-footer" style="border-top: 1px solid #e9ecef; background: white; border-radius: 0 0 20px 20px;">
+        <div class="mb-2">
+            <input type="file" class="form-control form-control-sm" id="image-upload" accept="image/*" style="display: none;">
+            <button class="btn btn-outline-secondary btn-sm" id="image-btn" title="Upload image for visual search">
+                <i class="fas fa-camera"></i> Upload Image
+            </button>
+            <small class="text-muted ms-2">Upload a book cover for visual search</small>
+        </div>
+        <div class="input-group">
+            <input type="text" class="form-control" id="chat-input" placeholder="Ask me anything about books..." style="border-radius: 25px 0 0 25px; border: 1px solid #e9ecef; border-right: none;">
+            <button class="btn btn-primary" id="chat-send" style="border-radius: 0 25px 25px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <small class="text-muted mt-1 d-block">
+            <i class="fas fa-robot"></i> AI-powered recommendations & visual search
+        </small>
+    </div>
+</div>

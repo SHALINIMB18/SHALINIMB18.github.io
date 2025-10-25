@@ -1,0 +1,85 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Dashboard - BiblioTrack{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">My Dashboard</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>My Orders</h3>
+        {% for order in orders %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">{{ order.book.title }}</h5>
+                <p class="card-text">Quantity: {{ order.quantity }}</p>
+                <p class="card-text">Total: ${{ order.total_price }}</p>
+                <p class="card-text">Status: {{ order.get_status_display }}</p>
+                {% if order.razorpay_payment_id %}
+                <p class="card-text">Payment ID: {{ order.razorpay_payment_id }}</p>
+                {% endif %}
+                <small class="text-muted">{{ order.ordered_at|date:"M d, Y H:i" }}</small>
+            </div>
+        </div>
+        {% empty %}
+        <p>No orders yet.</p>
+        {% endfor %}
+    </div>
+    <div class="col-md-6">
+        <h3>My Reviews</h3>
+        {% for review in reviews %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">{{ review.book.title }}</h5>
+                <div class="star-rating mb-2">
+                    {% for i in "12345"|make_list %}
+                        <i class="fas fa-star{% if review.rating < forloop.counter %}-half-alt{% endif %}"></i>
+                    {% endfor %}
+                </div>
+                <p class="card-text">{{ review.comment }}</p>
+                <small class="text-muted">{{ review.created_at|date:"M d, Y" }}</small>
+            </div>
+        </div>
+        {% empty %}
+        <p>No reviews yet.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <h3>Recommended for You</h3>
+        <div id="recommendations" class="row">
+            <!-- Recommendations will be loaded via AJAX -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/recommendations/')
+    .then(response => response.json())
+    .then(data => {
+        const container = document.getElementById('recommendations');
+        data.forEach(book => {
+            const bookCard = `
+                <div class="col-md-3 mb-4">
+                    <div class="card book-card h-100">
+                        <img src="${book.cover_image || 'https://via.placeholder.com/200x300?text=Book+Cover'}" class="card-img-top" alt="${book.title}">
+                        <div class="card-body">
+                            <h5 class="card-title">${book.title}</h5>
+                            <p class="card-text">by ${book.author}</p>
+                            <p class="card-text">$${book.price}</p>
+                            <a href="/books/${book.id}/" class="btn btn-primary">View Details</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += bookCard;
+        });
+    });
+});
+</script>
+{% endblock %}

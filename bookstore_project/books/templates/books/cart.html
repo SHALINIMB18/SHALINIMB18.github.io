@@ -1,0 +1,59 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Cart - BiblioTrack{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Your Cart</h1>
+
+{% if cart_items %}
+<div class="row">
+    <div class="col-md-8">
+        {% for item in cart_items %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-2">
+                        <img src="{% if item.book.cover_image %}{{ item.book.cover_image.url }}{% else %}https://via.placeholder.com/100x150?text=Book+Cover{% endif %}" class="img-fluid" alt="{{ item.book.title }}">
+                    </div>
+                    <div class="col-md-6">
+                        <h5>{{ item.book.title }}</h5>
+                        <p>by {{ item.book.author }}</p>
+                        <p>${{ item.book.price }}</p>
+                    </div>
+                    <div class="col-md-2">
+                        <form method="POST" action="{% url 'update_cart' item.pk %}">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                <input type="number" name="quantity" value="{{ item.quantity }}" min="1" class="form-control">
+                                <button type="submit" class="btn btn-outline-primary">Update</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-2">
+                        <p><strong>${{ item.total_price }}</strong></p>
+                        <a href="{% url 'remove_from_cart' item.pk %}" class="btn btn-danger btn-sm">Remove</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Order Summary</h5>
+            </div>
+            <div class="card-body">
+                <p>Total: <strong>${{ total }}</strong></p>
+                <a href="{% url 'checkout' %}" class="btn btn-success btn-lg w-100">Proceed to Checkout</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="text-center">
+    <h3>Your cart is empty</h3>
+    <a href="{% url 'book_list' %}" class="btn btn-primary">Continue Shopping</a>
+</div>
+{% endif %}
+{% endblock %}

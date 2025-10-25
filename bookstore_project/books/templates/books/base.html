@@ -1,0 +1,139 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BiblioTrack{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+        .navbar-brand { font-weight: bold; }
+        .book-card { transition: transform 0.2s; }
+        .book-card:hover { transform: scale(1.05); }
+        .carousel-item img { height: 400px; object-fit: cover; }
+        .star-rating { color: #ffc107; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #1B263B;">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'home' %}"><i class="fas fa-book me-2"></i>BiblioTrack</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="{% url 'home' %}">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'book_list' %}">Categories</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'book_list' %}">Genres</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'book_list' %}">Authors</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'book_list' %}">Top 10 Books</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'book_club' %}">Book Club</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'marketplace' %}"><i class="fas fa-store"></i> Marketplace</a></li>
+                </ul>
+                <form class="d-flex me-3" method="GET" action="{% url 'book_list' %}">
+                    <input class="form-control me-2" type="search" name="author" placeholder="Search by author..." aria-label="Search">
+                    <button class="btn btn-outline-light" type="submit">Search</button>
+                </form>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'wishlist' %}"><i class="fas fa-heart"></i> Wishlist</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'cart' %}"><i class="fas fa-shopping-cart"></i> Cart</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'my_listings' %}"><i class="fas fa-list"></i> My Listings</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'logout' %}">Logout</a></li>
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'signup' %}">Sign Up</a></li>
+                    {% endif %}
+                    <li class="nav-item"><a class="nav-link" href="/admin/">Admin Login</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light mt-5 py-5">
+        <div class="container">
+            <div class="row">
+                <!-- Company Info -->
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <h5 class="mb-3">
+                        <i class="fas fa-book-open me-2"></i>BiblioTrack
+                    </h5>
+                    <p class="mb-3">Your ultimate destination for discovering, buying, and selling books. Powered by AI to enhance your reading experience.</p>
+                    <div class="social-links">
+                        <a href="#" class="text-light me-3 fs-4"><i class="fab fa-facebook"></i></a>
+                        <a href="#" class="text-light me-3 fs-4"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-light me-3 fs-4"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="text-light me-3 fs-4"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+
+                <!-- Quick Links -->
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="mb-3">Quick Links</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="{% url 'home' %}" class="text-light text-decoration-none">Home</a></li>
+                        <li class="mb-2"><a href="{% url 'book_list' %}" class="text-light text-decoration-none">Browse Books</a></li>
+                        <li class="mb-2"><a href="{% url 'book_club' %}" class="text-light text-decoration-none">Book Club</a></li>
+                        <li class="mb-2"><a href="{% url 'marketplace' %}" class="text-light text-decoration-none">Marketplace</a></li>
+                        {% if user.is_authenticated %}
+                            <li class="mb-2"><a href="{% url 'dashboard' %}" class="text-light text-decoration-none">Dashboard</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <!-- Customer Service -->
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6 class="mb-3">Customer Service</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><a href="#" class="text-light text-decoration-none">Help Center</a></li>
+                        <li class="mb-2"><a href="#" class="text-light text-decoration-none">Shipping Info</a></li>
+                        <li class="mb-2"><a href="#" class="text-light text-decoration-none">Returns</a></li>
+                        <li class="mb-2"><a href="#" class="text-light text-decoration-none">Track Order</a></li>
+                        <li class="mb-2"><a href="#" class="text-light text-decoration-none">Contact Us</a></li>
+                    </ul>
+                </div>
+
+                <!-- Newsletter Signup -->
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <h6 class="mb-3">Stay Updated</h6>
+                    <p class="mb-3">Subscribe to our newsletter for the latest book recommendations and exclusive deals.</p>
+                    <form class="d-flex">
+                        <input type="email" class="form-control me-2" placeholder="Enter your email" aria-label="Email">
+                        <button class="btn btn-pink" type="submit">Subscribe</button>
+                    </form>
+                    <div class="mt-3">
+                        <small class="text-muted">We respect your privacy. Unsubscribe at any time.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Footer -->
+            <hr class="my-4">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="mb-0">&copy; 2025 BiblioTrack. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="#" class="text-light text-decoration-none me-3">Privacy Policy</a>
+                    <a href="#" class="text-light text-decoration-none me-3">Terms of Service</a>
+                    <a href="#" class="text-light text-decoration-none">Cookie Policy</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/custom.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

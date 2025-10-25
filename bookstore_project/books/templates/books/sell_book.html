@@ -1,0 +1,139 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Sell Your Book - BiblioTrack{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="fas fa-plus-circle"></i> List Your Book for Sale</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_title" class="form-label">Book Title *</label>
+                                    <input type="text" class="form-control" id="id_title" name="title" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_author" class="form-label">Author *</label>
+                                    <input type="text" class="form-control" id="id_author" name="author" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_genre" class="form-label">Genre *</label>
+                                    <select class="form-control" id="id_genre" name="genre" required>
+                                        <option value="">Select Genre</option>
+                                        <option value="Fiction">Fiction</option>
+                                        <option value="Non-Fiction">Non-Fiction</option>
+                                        <option value="Mystery">Mystery</option>
+                                        <option value="Romance">Romance</option>
+                                        <option value="Science Fiction">Science Fiction</option>
+                                        <option value="Fantasy">Fantasy</option>
+                                        <option value="Biography">Biography</option>
+                                        <option value="History">History</option>
+                                        <option value="Self-Help">Self-Help</option>
+                                        <option value="Business">Business</option>
+                                        <option value="Technology">Technology</option>
+                                        <option value="Health">Health</option>
+                                        <option value="Travel">Travel</option>
+                                        <option value="Cooking">Cooking</option>
+                                        <option value="Art">Art</option>
+                                        <option value="Sports">Sports</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_category" class="form-label">Category *</label>
+                                    <select class="form-control" id="id_category" name="category" required>
+                                        <option value="">Select Category</option>
+                                        <option value="Fiction">Fiction</option>
+                                        <option value="Non-Fiction">Non-Fiction</option>
+                                        <option value="Science">Science</option>
+                                        <option value="History">History</option>
+                                        <option value="Biography">Biography</option>
+                                        <option value="Self-Help">Self-Help</option>
+                                        <option value="Business">Business</option>
+                                        <option value="Technology">Technology</option>
+                                        <option value="Health">Health</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_price" class="form-label">Price ($) *</label>
+                                    <input type="number" class="form-control" id="id_price" name="price" step="0.01" min="0.01" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="id_condition" class="form-label">Condition *</label>
+                                    <select class="form-control" id="id_condition" name="condition" required>
+                                        <option value="">Select Condition</option>
+                                        <option value="new">New</option>
+                                        <option value="like_new">Like New</option>
+                                        <option value="very_good">Very Good</option>
+                                        <option value="good">Good</option>
+                                        <option value="acceptable">Acceptable</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_description" class="form-label">Description</label>
+                            <textarea class="form-control" id="id_description" name="description" rows="4" placeholder="Describe your book's condition, any notes, etc."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_cover_image" class="form-label">Cover Image</label>
+                            <input type="file" class="form-control" id="id_cover_image" name="cover_image" accept="image/*">
+                            <div class="form-text">Upload a clear photo of your book cover (optional but recommended)</div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-upload"></i> List Book for Sale
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const price = document.getElementById('id_price').value;
+        if (price && parseFloat(price) <= 0) {
+            e.preventDefault();
+            alert('Price must be greater than $0.00');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

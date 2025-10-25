@@ -1,0 +1,262 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Checkout - BiblioTrack{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Checkout</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Shipping Information</h5>
+            </div>
+            <div class="card-body">
+                <form id="checkout-form">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="first_name" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="last_name" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="3" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="city" class="form-label">City</label>
+                            <input type="text" class="form-control" id="city" name="city" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="state" class="form-label">State</label>
+                            <input type="text" class="form-control" id="state" name="state" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label for="zip" class="form-label">ZIP Code</label>
+                            <input type="text" class="form-control" id="zip" name="zip" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5>Payment Information</h5>
+            </div>
+            <div class="card-body">
+                <div id="razorpay-button-container">
+                    <button id="razorpay-button" class="btn btn-success btn-lg w-100">Pay with Razorpay</button>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <strong>Test Mode Active:</strong> This is a Razorpay test environment. No real money will be charged.
+                    <br>Use these test credentials:
+                    <ul class="mb-0 mt-2">
+                        <li>Card Number: 4111 1111 1111 1111</li>
+                        <li>Expiry: Any future date (e.g., 12/25)</li>
+                        <li>CVV: Any 3 digits (e.g., 123)</li>
+                        <li>Name: Any name</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Order Summary</h5>
+            </div>
+            <div class="card-body">
+                {% for item in cart_items %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span>{{ item.book.title }} (x{{ item.quantity }})</span>
+                    <span>${{ item.total_price }}</span>
+                </div>
+                {% endfor %}
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <strong>Total:</strong>
+                    <strong>${{ total }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const form = document.getElementById('checkout-form');
+    const payButton = document.getElementById('razorpay-button');
+
+    function validateForm() {
+        const requiredFields = form.querySelectorAll('[required]');
+        let isValid = true;
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                isValid = false;
+                field.classList.add('is-invalid');
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        return isValid;
+    }
+
+    form.querySelectorAll('input, textarea').forEach(field => {
+        field.addEventListener('input', () => {
+            field.classList.remove('is-invalid');
+        });
+    });
+
+    function showLoadingState() {
+        payButton.disabled = true;
+        payButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+    }
+
+    function hideLoadingState() {
+        payButton.disabled = false;
+        payButton.innerHTML = 'Pay with Razorpay';
+    }
+
+    function showError(message) {
+        const errorDiv = document.getElementById('payment-error');
+        if (!errorDiv) {
+            const div = document.createElement('div');
+            div.id = 'payment-error';
+            div.className = 'alert alert-danger mt-3';
+            div.style.display = 'none';
+            document.getElementById('razorpay-button-container').insertAdjacentElement('afterend', div);
+        }
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 5000);
+    }
+
+    const options = {
+        key: 'rzp_test_8wKfJcQzHq8n4L',
+        amount: parseInt("{{ amount_in_paisa|default:0 }}"),
+        currency: 'INR',
+        name: 'BiblioTrack',
+        description: 'Book Purchase',
+        prefill: {
+            email: document.getElementById('email').value,
+            name: document.getElementById('first_name').value + ' ' + document.getElementById('last_name').value,
+        },
+        handler: function (response) {
+            showLoadingState();
+            const shippingInfo = {
+                first_name: document.getElementById('first_name').value,
+                last_name: document.getElementById('last_name').value,
+                email: document.getElementById('email').value,
+                address: document.getElementById('address').value,
+                city: document.getElementById('city').value,
+                state: document.getElementById('state').value,
+                zip: document.getElementById('zip').value
+            };
+
+            fetch('/api/process-payment/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature,
+                    shipping_info: shippingInfo
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Payment processing failed');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    localStorage.setItem('orderSuccess', 'true');
+                    window.location.href = '/order-confirmation/' + data.order_id + '/';
+                } else {
+                    throw new Error(data.error || 'Payment failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Payment processing failed. Please try again.');
+                hideLoadingState();
+            });
+        },
+        modal: {
+            ondismiss: function() {
+                hideLoadingState();
+            }
+        },
+        theme: {
+            color: '#007bff'
+        }
+    };
+
+    const rzp = new Razorpay(options);
+
+    payButton.onclick = function(e) {
+        e.preventDefault();
+        if (!validateForm()) {
+            showError('Please fill in all required fields');
+            return;
+        }
+        rzp.open();
+    };
+
+    // Handle form submission
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (validateForm()) {
+            rzp.open();
+        }
+    });
+
+    // Handle browser back button after successful payment
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted || localStorage.getItem('orderSuccess')) {
+            localStorage.removeItem('orderSuccess');
+            window.location.href = '/cart/';
+        }
+    });
+});
+</script>
+
+<style>
+.is-invalid {
+    border-color: #dc3545;
+}
+.is-invalid:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+#payment-error {
+    animation: fadeIn 0.3s ease-in;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}

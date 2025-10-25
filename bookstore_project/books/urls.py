@@ -1,0 +1,44 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.home, name='home'),
+    path('books/', views.book_list, name='book_list'),
+    path('books/<int:pk>/', views.book_detail, name='book_detail'),
+    path('books/<int:pk>/add-review/', views.add_review, name='add_review'),
+    path('book-club/', views.book_club, name='book_club'),
+    path('signup/', views.signup, name='signup'),
+    path('login/', views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
+    path('forgot-password/', views.forgot_password, name='forgot_password'),
+    path('verify-otp/', views.verify_otp, name='verify_otp'),
+    path('dashboard/', views.user_dashboard, name='dashboard'),
+    path('cart/', views.cart, name='cart'),
+    path('checkout/', views.checkout, name='checkout'),
+    path('update-cart/<int:pk>/', views.update_cart, name='update_cart'),
+    path('remove-from-cart/<int:pk>/', views.remove_from_cart, name='remove_from_cart'),
+    path('add-to-cart/<int:pk>/', views.add_to_cart, name='add_to_cart'),
+    path('buy-now/<int:pk>/', views.buy_now, name='buy_now'),
+    path('add-to-wishlist/<int:pk>/', views.add_to_wishlist, name='add_to_wishlist'),
+    path('remove-from-wishlist/<int:pk>/', views.remove_from_wishlist, name='remove_from_wishlist'),
+    path('wishlist/', views.wishlist, name='wishlist'),
+    path('order-confirmation/<int:order_id>/', views.order_confirmation, name='order_confirmation'),
+
+    # API endpoints
+    path('api/books/', views.api_book_list, name='api_book_list'),
+    path('api/recommendations/', views.api_recommendations, name='api_recommendations'),
+    path('api/chatbot/', views.api_chatbot, name='api_chatbot'),
+    path('api/chat-messages/', views.api_chat_messages, name='api_chat_messages'),
+    path('api/send-chat-message/', views.api_send_chat_message, name='api_send_chat_message'),
+    path('api/visual-search/', views.api_visual_search, name='api_visual_search'),
+    path('api/process-payment/', views.api_process_payment, name='api_process_payment'),
+
+    # User book selling URLs
+    path('sell-book/', views.sell_book, name='sell_book'),
+    path('my-listings/', views.my_listings, name='my_listings'),
+    path('edit-listing/<int:pk>/', views.edit_listing, name='edit_listing'),
+    path('delete-listing/<int:pk>/', views.delete_listing, name='delete_listing'),
+    path('buy-user-book/<int:pk>/', views.buy_user_book, name='buy_user_book'),
+    path('user-book/<int:pk>/', views.user_book_detail, name='user_book_detail'),
+    path('marketplace/', views.marketplace, name='marketplace'),
+]

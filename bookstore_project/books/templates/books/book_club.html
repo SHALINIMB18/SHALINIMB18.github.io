@@ -1,0 +1,145 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Book Club - BiblioTrack{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Book Club</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="row">
+            <div class="col-md-6">
+                <h3>Recent Reviews & Discussions</h3>
+                {% for review in reviews %}
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <h5 class="card-title">{{ review.user.username }} reviewed "{{ review.book.title }}"</h5>
+                            <div class="star-rating">
+                                {% for i in "12345"|make_list %}
+                                    <i class="fas fa-star{% if review.rating < forloop.counter %}-half-alt{% endif %}"></i>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <p class="card-text">{{ review.comment }}</p>
+                        <small class="text-muted">{{ review.created_at|date:"M d, Y H:i" }}</small>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary">Like</button>
+                            <button class="btn btn-sm btn-outline-secondary">Reply</button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6">
+                <h3>Live Chat</h3>
+                <div id="chat-container" class="card">
+                    <div id="chat-messages" class="card-body" style="height: 400px; overflow-y: auto; background: #f8f9fa;">
+                        <!-- Chat messages will be loaded here -->
+                    </div>
+                    <div class="card-footer" style="background: white;">
+                        <div class="input-group">
+                            <input type="text" id="chat-input" class="form-control" placeholder="Type your message..." maxlength="500" style="border-radius: 25px 0 0 25px; border: 1px solid #e9ecef; border-right: none;">
+                            <button id="send-chat-btn" class="btn btn-primary" style="border-radius: 0 25px 25px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted mt-1 d-block">
+                            <i class="fas fa-circle text-success"></i> Live chat - Messages appear instantly
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <h4>Discussion Topics</h4>
+        <ul class="list-group mb-4">
+            <li class="list-group-item">Favorite mystery novels</li>
+            <li class="list-group-item">Sci-fi recommendations</li>
+            <li class="list-group-item">Book to movie adaptations</li>
+        </ul>
+
+        <h4>Top Reviewers</h4>
+        <ul class="list-group">
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                BookLover123
+                <span class="badge bg-primary rounded-pill">42 reviews</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                ReadingNerd
+                <span class="badge bg-primary rounded-pill">38 reviews</span>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const sendChatBtn = document.getElementById('send-chat-btn');
+
+    // Load initial chat messages
+    loadChatMessages();
+
+    // Send message on button click
+    sendChatBtn.addEventListener('click', sendChatMessage);
+
+    // Send message on Enter key
+    chatInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendChatMessage();
+        }
+    });
+
+    // Auto-refresh chat messages every 2 seconds for better real-time feel
+    setInterval(loadChatMessages, 2000);
+
+    function loadChatMessages() {
+        fetch('/books/api/chat-messages/')
+            .then(response => response.json())
+            .then(data => {
+                chatMessages.innerHTML = '';
+                data.forEach(message => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'mb-2';
+                    messageDiv.innerHTML = `
+                        <strong>${message.user}:</strong> ${message.message}
+                        <small class="text-muted">${new Date(message.created_at).toLocaleString()}</small>
+                        ${message.book ? `<br><small class="text-info">About: ${message.book}</small>` : ''}
+                    `;
+                    chatMessages.appendChild(messageDiv);
+                });
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            })
+            .catch(error => console.error('Error loading chat messages:', error));
+    }
+
+    function sendChatMessage() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        fetch('/books/api/send-chat-message/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ message: message })
+        })
+        .then(response => response.json())
+        .then(data => {
+            chatInput.value = '';
+            loadChatMessages(); // Refresh messages
+        })
+        .catch(error => {
+            console.error('Error sending message:', error);
+            alert('Failed to send message. Please try again.');
+        });
+    }
+});
+</script>
+{% endblock %}

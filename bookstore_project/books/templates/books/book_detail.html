@@ -1,0 +1,106 @@
+{% extends 'books/base.html' %}
+
+{% block title %}{{ book.title }} - BiblioTrack{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <img src="{% if book.cover_image %}{{ book.cover_image.url }}{% else %}https://via.placeholder.com/300x400?text=Book+Cover{% endif %}" class="img-fluid" alt="{{ book.title }}">
+    </div>
+    <div class="col-md-8">
+        <h1>{{ book.title }}</h1>
+        <h3>by {{ book.author }}</h3>
+        <div class="star-rating mb-3">
+            {% for i in "12345"|make_list %}
+                <i class="fas fa-star{% if book.rating < forloop.counter %}-half-alt{% endif %}"></i>
+            {% endfor %}
+            <span class="ms-2">{{ book.rating }}/5</span>
+        </div>
+        <p class="lead">${{ book.price }}</p>
+        <p><strong>Genre:</strong> {{ book.genre }}</p>
+        <p><strong>Category:</strong> {{ book.category }}</p>
+        <p><strong>Stock:</strong> {{ book.stock }}</p>
+        <p>{{ book.description }}</p>
+        {% if user.is_authenticated %}
+        <div class="d-flex gap-2 mb-3">
+            <a href="{% url 'add_to_cart' book.pk %}" class="btn btn-success btn-lg">Add to Cart</a>
+            <a href="{% url 'add_to_wishlist' book.pk %}" class="btn btn-outline-danger btn-lg">
+                <i class="fas fa-heart"></i> Add to Wishlist
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<hr>
+
+<h3>Similar Books You May Like</h3>
+<div class="row">
+    {% for similar_book in similar_books %}
+    <div class="col-md-3 mb-4">
+        <div class="card book-card h-100">
+            <img src="{% if similar_book.cover_image %}{{ similar_book.cover_image.url }}{% else %}https://via.placeholder.com/200x300?text=Book+Cover{% endif %}" class="card-img-top" alt="{{ similar_book.title }}">
+            <div class="card-body">
+                <h5 class="card-title">{{ similar_book.title }}</h5>
+                <p class="card-text">by {{ similar_book.author }}</p>
+                <div class="star-rating mb-2">
+                    {% for i in "12345"|make_list %}
+                        <i class="fas fa-star{% if similar_book.rating < forloop.counter %}-half-alt{% endif %}"></i>
+                    {% endfor %}
+                    <span class="ms-1">{{ similar_book.rating }}</span>
+                </div>
+                <p class="card-text">${{ similar_book.price }}</p>
+                <a href="{% url 'book_detail' similar_book.pk %}" class="btn btn-primary">View Details</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<hr>
+
+<h3>Reviews</h3>
+{% if user.is_authenticated %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Write a Review</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{% url 'add_review' book.pk %}">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="rating" class="form-label">Rating</label>
+                <select class="form-select" id="rating" name="rating" required>
+                    <option value="">Select Rating</option>
+                    <option value="5">5 Stars</option>
+                    <option value="4">4 Stars</option>
+                    <option value="3">3 Stars</option>
+                    <option value="2">2 Stars</option>
+                    <option value="1">1 Star</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="comment" class="form-label">Comment</label>
+                <textarea class="form-control" id="comment" name="comment" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Review</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% for review in reviews %}
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">{{ review.user.username }}</h5>
+        <div class="star-rating mb-2">
+            {% for i in "12345"|make_list %}
+                <i class="fas fa-star{% if review.rating < forloop.counter %}-half-alt{% endif %}"></i>
+            {% endfor %}
+        </div>
+        <p class="card-text">{{ review.comment }}</p>
+        <small class="text-muted">{{ review.created_at|date:"M d, Y" }}</small>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

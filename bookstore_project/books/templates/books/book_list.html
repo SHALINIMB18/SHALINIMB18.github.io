@@ -1,0 +1,240 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Books - BiblioTrack{% endblock %}
+
+{% block content %}
+<div class="search-container mb-4">
+    <h1 class="mb-4 text-center">Discover Amazing Books</h1>
+    <p class="text-center text-muted">Explore our vast collection of books across all genres and categories</p>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-filter"></i> Filters</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Category</label>
+                        <select class="form-select" id="category" name="category">
+                            <option value="">All Categories</option>
+                            <option value="Fiction">Fiction</option>
+                            <option value="Non-Fiction">Non-Fiction</option>
+                            <option value="Science">Science</option>
+                            <option value="History">History</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="genre" class="form-label">Genre</label>
+                        <select class="form-select" id="genre" name="genre">
+                            <option value="">All Genres</option>
+                            <option value="Mystery">Mystery</option>
+                            <option value="Romance">Romance</option>
+                            <option value="Thriller">Thriller</option>
+                            <option value="Biography">Biography</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="author" class="form-label">Author</label>
+                        <input type="text" class="form-control" id="author" name="author" value="{{ request.GET.author }}" placeholder="Search by author...">
+                    </div>
+                    <div class="mb-3">
+                        <label for="sort" class="form-label">Sort by</label>
+                        <select class="form-select" id="sort" name="sort">
+                            <option value="title" {% if request.GET.sort == 'title' %}selected{% endif %}>Title</option>
+                            <option value="price" {% if request.GET.sort == 'price' %}selected{% endif %}>Price</option>
+                            <option value="rating" {% if request.GET.sort == 'rating' %}selected{% endif %}>Rating</option>
+                            <option value="popularity" {% if request.GET.sort == 'popularity' %}selected{% endif %}>Popularity</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Apply Filters
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="row">
+            {% for book in books %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card book-card h-100 position-relative">
+                    <div class="position-absolute top-0 end-0 p-2">
+                        {% if user.is_authenticated %}
+                        <button class="wishlist-btn" onclick="toggleWishlist({{ book.pk }})">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    <img src="{% if book.cover_image_url %}{{ book.cover_image_url }}{% else %}/media/books/book_placeholder.svg{% endif %}" class="card-img-top" alt="{{ book.title }}">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">{{ book.title }}</h5>
+                        <p class="card-text text-muted">by {{ book.author }}</p>
+                        <div class="star-rating mb-2">
+                            {% for i in "12345"|make_list %}
+                                <i class="fas fa-star{% if book.rating < forloop.counter %}-half-alt{% endif %}"></i>
+                            {% endfor %}
+                            <span class="ms-1">{{ book.rating }}</span>
+                        </div>
+                        <p class="card-text fw-bold text-primary">${{ book.price }}</p>
+                        <div class="mt-auto">
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <a href="{% url 'book_detail' book.pk %}" class="btn btn-primary w-100">
+                                        <i class="fas fa-eye"></i> View Details
+                                    </a>
+                                </div>
+                                {% if user.is_authenticated %}
+                                <div class="col-6">
+                                    <a href="{% url 'add_to_cart' book.pk %}" class="btn btn-success w-100">
+                                        <i class="fas fa-cart-plus"></i> Add to Cart
+                                    </a>
+                                </div>
+                                <div class="col-6">
+                                    <a href="{% url 'buy_now' book.pk %}" class="btn btn-warning w-100">
+                                        <i class="fas fa-shopping-bag"></i> Buy Now
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% if not books %}
+        <div class="text-center mt-5">
+            <i class="fas fa-search fa-4x text-muted mb-3"></i>
+            <h3 class="text-muted">No books found</h3>
+            <p class="text-muted">Try adjusting your filters or search terms.</p>
+            <a href="{% url 'book_list' %}" class="btn btn-primary">Clear Filters</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleWishlist(bookId) {
+    const btn = event.target.closest('.wishlist-btn');
+    const icon = btn.querySelector('i');
+    
+    // Show loading state
+    btn.disabled = true;
+    icon.classList.remove('fa-heart');
+    icon.classList.add('fa-spinner', 'fa-spin');
+
+    fetch('/books/' + bookId + '/add-to-wishlist/', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        }
+        throw new Error('Network response was not ok');
+    })
+    .then(data => {
+        // Reset icon
+        icon.classList.remove('fa-spinner', 'fa-spin');
+        icon.classList.add('fa-heart');
+        
+        // Update button state
+        btn.classList.toggle('active');
+        
+        // Show feedback message
+        const toast = document.createElement('div');
+        toast.className = 'toast position-fixed bottom-0 end-0 m-3';
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="toast-header bg-${data.added ? 'success' : 'info'}">
+                <strong class="me-auto text-white">Wishlist</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                ${data.message}
+            </div>
+        `;
+        document.body.appendChild(toast);
+        new bootstrap.Toast(toast).show();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // Reset icon
+        icon.classList.remove('fa-spinner', 'fa-spin');
+        icon.classList.add('fa-heart');
+        
+        // Show error message
+        const toast = document.createElement('div');
+        toast.className = 'toast position-fixed bottom-0 end-0 m-3';
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="toast-header bg-danger">
+                <strong class="me-auto text-white">Error</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                Failed to update wishlist. Please try again.
+            </div>
+        `;
+        document.body.appendChild(toast);
+        new bootstrap.Toast(toast).show();
+    })
+    .finally(() => {
+        btn.disabled = false;
+    });
+}
+
+// Add CSS for wishlist button
+document.head.insertAdjacentHTML('beforeend', `
+<style>
+.wishlist-btn {
+    background: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.wishlist-btn:hover {
+    transform: scale(1.1);
+}
+
+.wishlist-btn.active i {
+    color: #dc3545;
+}
+
+.wishlist-btn i {
+    color: #6c757d;
+}
+
+.card-img-top {
+    height: 300px;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.card:hover .card-img-top {
+    transform: scale(1.05);
+}
+
+.book-card {
+    transition: box-shadow 0.3s ease;
+    overflow: hidden;
+}
+
+.book-card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+</style>
+`);
+</script>
+{% endblock %}
