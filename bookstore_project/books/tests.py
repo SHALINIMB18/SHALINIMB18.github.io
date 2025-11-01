@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from unittest.mock import patch, MagicMock
-from .models import Book, Review, Order, UserProfile, Wishlist, UserBook
+from .models import Book, Review, Order, UserProfile, Wishlist, UserBook, PaymentEvent, BookClubPost, BookClubComment
 from .serializers import BookSerializer
 from rest_framework.test import APITestCase
 from rest_framework import status
@@ -374,6 +374,83 @@ class APITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('response', response.data)
 
+    def test_payment_webhook(self):
+        url = reverse('api_payment_webhook')
+
+        # Create a user and an order that will be updated by the webhook
+        user = User.objects.create_user(username='webhookuser', password='wp', email='webhook@example.com')
+        book = Book.objects.create(title='Webhook Book', author='A', genre='F', category='N', price=9.99, stock=5)
+        order = Order.objects.create(user=user, book=book, quantity=1, status='pending', razorpay_order_id='order_test123')
+
+        # Prepare a payload similar to Razorpay's payment.captured structure
+        payload = {
+            'event': 'payment.captured',
+            'payload': {
+                'payment': {
+                    'entity': {
+                        'id': 'pay_test123',
+                        'order_id': 'order_test123',
+                        'status': 'captured'
+                    }
+                }
+            }
+        }
+
+        # Mock the razorpay utility verification to avoid SDK dependency in tests
+        with patch('books.views.razorpay.Utility.verify_webhook_signature') as mock_verify:
+            mock_verify.return_value = None
+            response = self.client.post(url, data=payload, format='json', HTTP_X_RAZORPAY_SIGNATURE='sig')
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data.get('status'), 'ok')
+            # Ensure PaymentEvent persisted
+            self.assertEqual(PaymentEvent.objects.count(), 1)
+            # Reload order and ensure status updated and payment id set
+            order.refresh_from_db()
+            self.assertEqual(order.status, 'confirmed')
+            self.assertEqual(order.razorpay_payment_id, 'pay_test123')
+            # Ensure stock decremented
+            book.refresh_from_db()
+            self.assertEqual(book.stock, 4)
+
+    def test_payment_webhook_idempotent(self):
+        """Posting the same webhook twice should not decrement stock twice."""
+        url = reverse('api_payment_webhook')
+
+        user = User.objects.create_user(username='webhookuser2', password='wp2', email='webhook2@example.com')
+        book = Book.objects.create(title='Webhook Book 2', author='A', genre='F', category='N', price=9.99, stock=5)
+        order = Order.objects.create(user=user, book=book, quantity=1, status='pending', razorpay_order_id='order_test_idemp')
+
+        payload = {
+            'event': 'payment.captured',
+            'payload': {
+                'payment': {
+                    'entity': {
+                        'id': 'pay_test_idemp',
+                        'order_id': 'order_test_idemp',
+                        'status': 'captured'
+                    }
+                }
+            }
+        }
+
+        with patch('books.views.razorpay.Utility.verify_webhook_signature') as mock_verify:
+            mock_verify.return_value = None
+            # First delivery
+            resp1 = self.client.post(url, data=payload, format='json', HTTP_X_RAZORPAY_SIGNATURE='sig')
+            self.assertEqual(resp1.status_code, status.HTTP_200_OK)
+            # Second delivery (duplicate)
+            resp2 = self.client.post(url, data=payload, format='json', HTTP_X_RAZORPAY_SIGNATURE='sig')
+            self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+
+            # Verify order status and payment id set once
+            order.refresh_from_db()
+            self.assertEqual(order.status, 'confirmed')
+            self.assertEqual(order.razorpay_payment_id, 'pay_test_idemp')
+
+            # Ensure stock decremented only once (from 5 to 4)
+            book.refresh_from_db()
+            self.assertEqual(book.stock, 4)
+
     @patch('books.views.send_mail')
     def test_api_process_payment(self, mock_send_mail):
         user = User.objects.create_user(username='payuser', password='paypass')
@@ -386,6 +463,7 @@ class APITests(APITestCase):
         data = {
             'razorpay_payment_id': 'pay_test123',
             'razorpay_order_id': 'order_test123',
+            'razorpay_signature': 'sig_test123',
             'shipping_info': {
                 'first_name': 'John',
                 'last_name': 'Doe',
@@ -396,10 +474,140 @@ class APITests(APITestCase):
                 'zip': '12345'
             }
         }
-        response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data['success'])
-        mock_send_mail.assert_called_once()
+
+        # Mock Razorpay client to avoid network calls and simulate successful verification
+        with patch('books.views.razorpay.Client') as mock_razor_client:
+            mock_client_instance = MagicMock()
+            # utility.verify_payment_signature should not raise
+            mock_client_instance.utility.verify_payment_signature.return_value = None
+            # payment.fetch returns a captured payment
+            mock_client_instance.payment.fetch.return_value = {'status': 'captured'}
+            mock_razor_client.return_value = mock_client_instance
+
+            response = self.client.post(url, data, format='json')
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertTrue(response.data.get('success'))
+            mock_send_mail.assert_called_once()
+
+    def test_api_process_payment_idempotent(self):
+        """Calling the process payment endpoint twice with the same payment id should be idempotent."""
+        user = User.objects.create_user(username='idempuser', password='idemppass', email='idem@example.com')
+        self.client.force_authenticate(user=user)
+
+        # Add item to cart
+        Order.objects.create(user=user, book=self.book, quantity=1, status='cart')
+
+        url = reverse('api_process_payment')
+        data = {
+            'razorpay_payment_id': 'pay_idempotent',
+            'razorpay_order_id': 'order_idempotent',
+            'razorpay_signature': 'sig_idemp',
+            'shipping_info': {
+                'first_name': 'Jane',
+                'last_name': 'Doe',
+                'email': 'jane@example.com',
+                'address': '456 Main St',
+                'city': 'Anytown',
+                'state': 'CA',
+                'zip': '54321'
+            }
+        }
+
+        with patch('books.views.razorpay.Client') as mock_razor_client, patch('books.views.send_mail') as mock_send:
+            mock_client_instance = MagicMock()
+            mock_client_instance.utility.verify_payment_signature.return_value = None
+            mock_client_instance.payment.fetch.return_value = {'status': 'captured'}
+            mock_razor_client.return_value = mock_client_instance
+
+            # First processing - should process and reduce stock
+            resp1 = self.client.post(url, data, format='json')
+            self.assertEqual(resp1.status_code, status.HTTP_200_OK)
+            self.assertTrue(resp1.data.get('success'))
+
+            # Reload book stock
+            self.book.refresh_from_db()
+            stock_after_first = self.book.stock
+
+            # Second processing - should be idempotent and not reduce stock again
+            resp2 = self.client.post(url, data, format='json')
+            self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+            self.assertTrue(resp2.data.get('success'))
+
+            self.book.refresh_from_db()
+            self.assertEqual(self.book.stock, stock_after_first)
+
+
+class ForumTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='forumuser', password='testpass')
+        self.post = BookClubPost.objects.create(
+            author=self.user,
+            title="Test Forum Post",
+            content="This is a test post content."
+        )
+
+    def test_book_club_view(self):
+        response = self.client.get(reverse('book_club'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'books/book_club.html')
+        self.assertIn('posts', response.context)
+
+    def test_post_detail_view(self):
+        response = self.client.get(reverse('post_detail', args=[self.post.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'books/post_detail.html')
+        self.assertEqual(response.context['post'], self.post)
+
+    def test_create_post_view_authenticated(self):
+        self.client.login(username='forumuser', password='testpass')
+        response = self.client.get(reverse('create_post'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'books/create_post.html')
+
+    def test_create_post_view_unauthenticated(self):
+        response = self.client.get(reverse('create_post'))
+        self.assertEqual(response.status_code, 302)  # Redirect to login
+
+    def test_create_post_post_authenticated(self):
+        self.client.login(username='forumuser', password='testpass')
+        data = {
+            'title': 'New Test Post',
+            'content': 'This is new test content.'
+        }
+        response = self.client.post(reverse('create_post'), data)
+        self.assertEqual(response.status_code, 302)  # Redirect after creation
+        self.assertTrue(BookClubPost.objects.filter(title='New Test Post').exists())
+
+    def test_create_comment_authenticated(self):
+        self.client.login(username='forumuser', password='testpass')
+        data = {'content': 'This is a test comment.'}
+        response = self.client.post(reverse('create_comment', args=[self.post.pk]), data)
+        self.assertEqual(response.status_code, 302)  # Redirect after creation
+        self.assertTrue(BookClubComment.objects.filter(content='This is a test comment.').exists())
+
+    def test_like_post_authenticated(self):
+        self.client.login(username='forumuser', password='testpass')
+        response = self.client.post(reverse('like_post', args=[self.post.pk]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.post.refresh_from_db()
+        self.assertEqual(self.post.like_count, 1)
+
+    def test_like_comment_authenticated(self):
+        comment = BookClubComment.objects.create(
+            post=self.post,
+            author=self.user,
+            content="Test comment"
+        )
+        self.client.login(username='forumuser', password='testpass')
+        response = self.client.post(reverse('like_comment', args=[comment.pk]))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        comment.refresh_from_db()
+        self.assertEqual(comment.like_count, 1)
 
 
 class SerializerTests(TestCase):

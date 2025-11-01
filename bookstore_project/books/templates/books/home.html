@@ -16,19 +16,7 @@
                         <i class="fas fa-search"></i> Search
                     </button>
                 </form>
-                <div class="mt-3">
-                    <div class="input-group">
-                        <input type="file" id="visualSearch" accept="image/*" class="form-control" style="border-radius: 25px 0 0 25px; border: none; background: rgba(255,255,255,0.9); display: none;">
-                        <label for="visualSearch" class="btn btn-outline-light" style="border-radius: 0 25px 25px 0;">
-                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/>
-                                <path d="M2 4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4H2zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z"/>
-                            </svg>
-                            Visual Search
-                        </label>
-                    </div>
-                    <small class="text-light">Upload a book cover image for AI-powered visual search</small>
-                </div>
+
             </div>
         </div>
     </div>
@@ -40,7 +28,7 @@
             <div class="carousel-inner">
                 {% for book in featured_books %}
                 <div class="carousel-item {% if forloop.first %}active{% endif %}">
-                    <img src="{% if book.cover_image_url %}{{ book.cover_image_url }}{% else %}https://via.placeholder.com/1200x500?text=Featured+Book{% endif %}" class="d-block w-100" alt="{{ book.title }}" style="height: 400px; object-fit: cover;">
+                    <img src="{{ book.get_cover_url }}" class="d-block w-100" alt="{{ book.title }}" style="height: 400px; object-fit: cover;">
                     <div class="carousel-caption d-none d-md-block" style="background: rgba(0,0,0,0.5); border-radius: 10px;">
                         <h3>{{ book.title }}</h3>
                         <p class="mb-2">by {{ book.author }}</p>
@@ -64,6 +52,71 @@
         </div>
     </div>
 </div>
+
+<!-- Deal of the Day Section -->
+{% if active_deals %}
+<div class="row mb-5">
+    <div class="col-12">
+        <h2 class="mb-4 text-center fw-bold" style="color: #E0A96D;">🔥 Deal of the Day</h2>
+        <div class="row">
+            {% for deal in active_deals %}
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card deal-card h-100 position-relative" style="border: none; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                    <!-- Deal Badge -->
+                    <div class="position-absolute top-0 start-0 bg-danger text-white px-3 py-2 rounded-end" style="z-index: 2; font-weight: bold;">
+                        {{ deal.discount_percentage }}% OFF
+                    </div>
+
+                    <!-- Book Image -->
+                    <div class="position-relative">
+                        <img src="{{ deal.book.get_cover_url }}"
+                             class="card-img-top" alt="{{ deal.book.title }}" style="height: 300px; object-fit: cover;">
+                        <!-- Overlay with deal info -->
+                        <div class="position-absolute bottom-0 start-0 w-100 bg-gradient-dark p-3" style="background: linear-gradient(transparent, rgba(0,0,0,0.8));">
+                            <div class="text-white">
+                                <h6 class="mb-1">{{ deal.book.title|truncatechars:25 }}</h6>
+                                <p class="mb-1 small">by {{ deal.book.author|truncatechars:20 }}</p>
+                                <div class="d-flex align-items-center">
+                                    <span class="text-decoration-line-through text-muted me-2">${{ deal.book.price }}</span>
+                                    <span class="fw-bold text-warning">${{ deal.discounted_price }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-body d-flex flex-column">
+                        <div class="star-rating mb-2">
+                            {% for i in "12345"|make_list %}
+                                <i class="fas fa-star{% if deal.book.rating < forloop.counter %}-half-alt{% endif %}"></i>
+                            {% endfor %}
+                            <span class="ms-1 small">{{ deal.book.rating }}/5</span>
+                        </div>
+
+                        <div class="mt-auto">
+                            <a href="{% url 'book_detail' deal.book.pk %}" class="btn btn-warning btn-sm w-100 mb-2" style="background: #E0A96D; border: none; color: #1B263B;">
+                                <i class="fas fa-eye"></i> View Deal
+                            </a>
+                            {% if user.is_authenticated %}
+                            <a href="{% url 'add_to_cart' deal.book.pk %}" class="btn btn-success btn-sm w-100">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Deal Timer -->
+                    <div class="card-footer bg-light p-2">
+                        <small class="text-muted">
+                            <i class="fas fa-clock"></i> Ends: {{ deal.end_date|date:"M d, H:i" }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="row mb-5">
     <div class="col-12 text-center">
@@ -118,13 +171,55 @@
                 #{{ forloop.counter }}
             </div>
             {% if user.is_authenticated %}
-            <div class="position-absolute top-0 end-0 p-2">
-                <button class="wishlist-btn" data-book-id="{{ book.pk }}" onclick="toggleWishlist({{ book.pk }})">
+                <div class="position-absolute top-0 end-0 p-2">
+                <button class="wishlist-btn" data-book-id="{{ book.pk }}" onclick="toggleWishlist('{{ book.pk }}')">
                     <i class="fas fa-heart"></i>
                 </button>
             </div>
             {% endif %}
-            <img src="{% if book.cover_image_url %}{{ book.cover_image_url }}{% else %}https://via.placeholder.com/200x300?text=Book+Cover{% endif %}" class="card-img-top" alt="{{ book.title }}">
+            <img src="{{ book.get_cover_url }}" class="card-img-top" alt="{{ book.title }}">
+            <div class="card-body d-flex flex-column">
+                <h6 class="card-title">{{ book.title|truncatechars:20 }}</h6>
+                <p class="card-text text-muted small">by {{ book.author|truncatechars:15 }}</p>
+                <div class="star-rating mb-2">
+                    {% for i in "12345"|make_list %}
+                        <i class="fas fa-star{% if book.rating < forloop.counter %}-half-alt{% endif %}"></i>
+                    {% endfor %}
+                    <span class="ms-1 small">{{ book.rating }}</span>
+                </div>
+                <p class="card-text fw-bold text-primary">${{ book.price }}</p>
+                <div class="mt-auto">
+                    <a href="{% url 'book_detail' book.pk %}" class="btn btn-primary btn-sm w-100 mb-1">
+                        <i class="fas fa-eye"></i> View
+                    </a>
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'add_to_cart' book.pk %}" class="btn btn-success btn-sm w-100">
+                        <i class="fas fa-cart-plus"></i> Add to Cart
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<h2 class="mb-4 text-center fw-bold">Best Sellers</h2>
+<div class="row">
+    {% for book in best_sellers %}
+    <div class="col-lg-2 col-md-3 col-sm-6 mb-4">
+        <div class="card book-card h-100 position-relative">
+            <div class="position-absolute top-0 start-0 bg-success text-white px-2 py-1 rounded-end" style="font-size: 0.8rem;">
+                <i class="fas fa-crown"></i>
+            </div>
+            {% if user.is_authenticated %}
+            <div class="position-absolute top-0 end-0 p-2">
+                <button class="wishlist-btn" data-book-id="{{ book.pk }}" onclick="toggleWishlist('{{ book.pk }}')">
+                    <i class="fas fa-heart"></i>
+                </button>
+            </div>
+            {% endif %}
+            <img src="{{ book.get_cover_url }}" class="card-img-top" alt="{{ book.title }}">
             <div class="card-body d-flex flex-column">
                 <h6 class="card-title">{{ book.title|truncatechars:20 }}</h6>
                 <p class="card-text text-muted small">by {{ book.author|truncatechars:15 }}</p>
@@ -221,38 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Visual search
-    document.getElementById('visualSearch').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const formData = new FormData();
-            formData.append('image', file);
 
-            fetch('/api/visual-search/', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Visual search results:', data);
-                // Handle results (redirect to search results page or show results)
-                if (data.length > 0) {
-                    // Create a results display or redirect to book list with visual search results
-                    let resultsHtml = '<div class="alert alert-success mt-3">Visual search found similar books:</div>';
-                    data.forEach(book => {
-                        resultsHtml += `<div class="card mb-2"><div class="card-body"><h6>${book.title}</h6><p>by ${book.author}</p></div></div>`;
-                    });
-                    // You can append this to a results container or redirect
-                    console.log('Visual search results HTML:', resultsHtml);
-                } else {
-                    console.log('No similar books found');
-                }
-            });
-        }
-    });
 });
 </script>
 {% endblock %}

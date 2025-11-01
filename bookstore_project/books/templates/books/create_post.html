@@ -1,0 +1,119 @@
+{% extends 'books/base.html' %}
+
+{% block title %}Create New Post - Book Club{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">
+                        <i class="fas fa-plus"></i> Create New Post
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="id_title" class="form-label">Post Title *</label>
+                            <input type="text" class="form-control" id="id_title" name="title"
+                                   placeholder="Enter an engaging title for your post" required
+                                   maxlength="200">
+                            <div class="form-text">Choose a clear, descriptive title that captures the essence of your discussion.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="id_content" class="form-label">Post Content *</label>
+                            <textarea class="form-control" id="id_content" name="content" rows="8"
+                                      placeholder="Share your thoughts, ask questions, or start a discussion..."
+                                      required></textarea>
+                            <div class="form-text">Write your post content here. You can use basic formatting.</div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Community Guidelines:</strong> Please keep discussions respectful and on-topic.
+                            All posts are moderated to maintain a positive community environment.
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'book_club' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Create Post
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Posting Tips -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Posting Tips</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>Be specific:</strong> Include details about books, authors, or topics you're discussing.</li>
+                        <li><strong>Ask questions:</strong> Encourage others to share their opinions and experiences.</li>
+                        <li><strong>Stay on topic:</strong> Keep your post relevant to books and reading.</li>
+                        <li><strong>Be respectful:</strong> Treat others with kindness and consideration.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-save draft functionality (optional enhancement)
+    const titleInput = document.getElementById('id_title');
+    const contentTextarea = document.getElementById('id_content');
+
+    function saveDraft() {
+        const draft = {
+            title: titleInput.value,
+            content: contentTextarea.value,
+            timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('book_club_draft', JSON.stringify(draft));
+    }
+
+    // Save draft on input
+    titleInput.addEventListener('input', saveDraft);
+    contentTextarea.addEventListener('input', saveDraft);
+
+    // Load draft on page load
+    const savedDraft = localStorage.getItem('book_club_draft');
+    if (savedDraft) {
+        const draft = JSON.parse(savedDraft);
+        const draftTime = new Date(draft.timestamp);
+        const now = new Date();
+        const hoursDiff = (now - draftTime) / (1000 * 60 * 60);
+
+        // Only load draft if it's less than 24 hours old
+        if (hoursDiff < 24) {
+            if (confirm('You have an unsaved draft from ' + draftTime.toLocaleString() + '. Would you like to restore it?')) {
+                titleInput.value = draft.title || '';
+                contentTextarea.value = draft.content || '';
+            } else {
+                localStorage.removeItem('book_club_draft');
+            }
+        } else {
+            localStorage.removeItem('book_club_draft');
+        }
+    }
+
+    // Clear draft on successful form submission
+    document.querySelector('form').addEventListener('submit', function() {
+        localStorage.removeItem('book_club_draft');
+    });
+});
+</script>
+{% endblock %}

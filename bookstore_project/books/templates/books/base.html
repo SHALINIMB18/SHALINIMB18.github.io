@@ -15,6 +15,16 @@
         .book-card:hover { transform: scale(1.05); }
         .carousel-item img { height: 400px; object-fit: cover; }
         .star-rating { color: #ffc107; }
+        .btn-pink {
+            background-color: #E0A96D;
+            border-color: #E0A96D;
+            color: #1B263B;
+        }
+        .btn-pink:hover {
+            background-color: #d49a5f;
+            border-color: #d49a5f;
+            color: #1B263B;
+        }
     </style>
 </head>
 <body>
@@ -133,7 +143,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{% static 'js/custom.js' %}"></script>
+    <script src="{% static 'js/custom.js' %}?v=2"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,8 +1,11 @@
 import os
 import re
 import requests
+import logging
 from pathlib import Path
 from urllib.parse import urlparse
+
+logger = logging.getLogger(__name__)
 
 # Django setup
 import django
@@ -32,7 +35,7 @@ mapping = {}
 for t, u in zip(titles, urls):
     mapping[t.strip()] = u.strip()
 
-print(f'Found {len(mapping)} title->url mappings in populate_data.py')
+logger.info(f'Found {len(mapping)} title->url mappings in populate_data.py')
 
 count = 0
 updated = 0
@@ -49,7 +52,7 @@ for book in Book.objects.all():
         continue
 
     try:
-        print(f'Downloading for "{book.title}" from {url}')
+        logger.info(f'Downloading for "{book.title}" from {url}')
         resp = requests.get(url, timeout=15)
         resp.raise_for_status()
         # Determine extension
@@ -71,9 +74,9 @@ for book in Book.objects.all():
         book.save()
         updated += 1
         count += 1
-    except Exception as e:
-        print(f'Failed to download for "{book.title}": {e}')
+    except (requests.RequestException, OSError) as e:
+        logger.error(f'Failed to download for "{book.title}": {e}')
         count += 1
         continue
 
-print(f'Downloaded and updated {updated} book cover URLs (attempted {count}).')
+logger.info(f'Downloaded and updated {updated} book cover URLs (attempted {count}).')

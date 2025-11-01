@@ -6,27 +6,54 @@ import re
 import random
 from .models import Book, Review, UserBook
 from django.db.models import Q
+import os
+import requests
+import json
+import logging
+import google.generativeai as genai
+from .semantic_search import semantic_search_books
+from .advanced_visual_search import find_similar_books_advanced
 
-# Download required NLTK data
+logger = logging.getLogger(__name__)
+
+# Attempt to detect NLTK data availability, but don't force downloads (offline-safe)
+_NLTK_HAS_PUNKT = True
+_NLTK_HAS_STOPWORDS = True
+_NLTK_HAS_WORDNET = True
 try:
     nltk.data.find('tokenizers/punkt')
 except LookupError:
-    nltk.download('punkt')
+    _NLTK_HAS_PUNKT = False
 
 try:
     nltk.data.find('corpora/stopwords')
 except LookupError:
-    nltk.download('stopwords')
+    _NLTK_HAS_STOPWORDS = False
 
 try:
     nltk.data.find('corpora/wordnet')
 except LookupError:
-    nltk.download('wordnet')
+    _NLTK_HAS_WORDNET = False
 
 class BookChatbot:
     def __init__(self):
-        self.lemmatizer = WordNetLemmatizer()
-        self.stop_words = set(stopwords.words('english'))
+        # Use lemmatizer only if wordnet is available; otherwise provide a noop
+        if _NLTK_HAS_WORDNET:
+            try:
+                self.lemmatizer = WordNetLemmatizer()
+            except Exception:
+                self.lemmatizer = lambda x: x
+        else:
+            self.lemmatizer = lambda x: x
+
+        # Load stopwords if available, otherwise empty set
+        if _NLTK_HAS_STOPWORDS:
+            try:
+                self.stop_words = set(stopwords.words('english'))
+            except Exception:
+                self.stop_words = set()
+        else:
+            self.stop_words = set()
 
         # Intent patterns using regex
         self.intent_patterns = {
@@ -60,7 +87,7 @@ class BookChatbot:
             'search': [
                 "I found these books matching your query: {books}",
                 "Here are the books I found: {books}",
-                "Check out these results: {books}"
+                "Check out these results: {books}",
             ],
             'help': [
                 "I can help you find book recommendations, search for books, or answer questions about our bookstore!",
@@ -86,13 +113,20 @@ class BookChatbot:
 
     def preprocess_text(self, text):
         """Preprocess text for better matching"""
-        # Tokenize
-        tokens = word_tokenize(text.lower())
+        # Tokenize: prefer NLTK punkt tokenizer if available, otherwise fallback to regex
+        text_lower = text.lower()
+        tokens = []
+        if _NLTK_HAS_PUNKT:
+            try:
+                tokens = word_tokenize(text_lower)
+            except Exception:
+                tokens = re.findall(r"\w+", text_lower)
+        else:
+            tokens = re.findall(r"\w+", text_lower)
 
-        # Remove stopwords and lemmatize
-        tokens = [self.lemmatizer.lemmatize(token) for token in tokens
-                 if token not in self.stop_words and token.isalnum()]
-
+        # Remove stopwords and lemmatize (lemmatizer may be noop)
+        tokens = [self.lemmatizer(token) if callable(self.lemmatizer) else token for token in tokens]
+        tokens = [token for token in tokens if token not in self.stop_words and token.isalnum()]
         return tokens
 
     def classify_intent(self, text):
@@ -132,7 +166,29 @@ class BookChatbot:
         }
 
     def search_books(self, keywords, limit=3):
-        """Search for books based on keywords"""
+        """Search for books based on keywords using semantic search"""
+        # Create a search query from keywords
+        query_parts = []
+
+        if keywords['genres']:
+            query_parts.extend(keywords['genres'])
+        if keywords['authors']:
+            query_parts.extend(keywords['authors'])
+        if keywords['topics']:
+            query_parts.extend(keywords['topics'])
+        if keywords['tokens']:
+            query_parts.extend(keywords['tokens'][:3])  # Use first 3 tokens
+
+        if query_parts:
+            # Use semantic search
+            search_query = ' '.join(query_parts)
+            semantic_results = semantic_search_books(search_query, top_n=limit)
+
+            if semantic_results:
+                books = [book for book, score in semantic_results if hasattr(book, 'id')]
+                return books[:limit]
+
+        # Fallback to traditional search if semantic search fails
         query = Q()
 
         if keywords['genres']:
@@ -234,3 +290,104 @@ class BookChatbot:
 
 # Global chatbot instance
 chatbot = BookChatbot()
+
+
+def call_external_chat_api(query, user=None, timeout=10):
+    """Call an external chatbot API if configured via env vars.
+
+    Expects the following environment variables (optional):
+      - CHATBOT_API_URL : full URL to POST queries to
+      - CHATBOT_API_KEY : bearer token for Authorization header
+
+    The function is intentionally permissive: it sends JSON {"query": <text>} and
+    tries to extract a useful text response from common shapes:
+      - {"response": "..."}
+      - {"answer": "..."}
+      - OpenAI-style {"choices": [{"message": {"content": "..."}}]}
+
+    Returns a string response on success or None on failure.
+    """
+    api_url = os.environ.get('CHATBOT_API_URL')
+    api_key = os.environ.get('CHATBOT_API_KEY')
+    if not api_url or not api_key:
+        return None
+
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json'
+    }
+
+    payload = {'query': query}
+
+    try:
+        logger.debug('Calling external chatbot API %s', api_url)
+        resp = requests.post(api_url, headers=headers, data=json.dumps(payload), timeout=timeout)
+        resp.raise_for_status()
+    except requests.exceptions.Timeout:
+        logger.warning('External chatbot API timed out')
+        return None
+    except requests.exceptions.RequestException as e:
+        logger.warning('External chatbot API request failed: %s', e)
+        return None
+
+    try:
+        data = resp.json()
+    except Exception:
+        return resp.text
+
+    # Common response shapes
+    if isinstance(data, dict):
+        if 'response' in data and isinstance(data['response'], str):
+            return data['response']
+        if 'answer' in data and isinstance(data['answer'], str):
+            return data['answer']
+        # OpenAI chat completion style
+        if 'choices' in data and isinstance(data['choices'], list) and len(data['choices']) > 0:
+            first = data['choices'][0]
+            # gpt-3.5 style
+            if isinstance(first, dict) and 'message' in first and isinstance(first['message'], dict):
+                return first['message'].get('content')
+            # older style
+            if isinstance(first, dict) and 'text' in first:
+                return first.get('text')
+
+    # Fallback: try to stringify
+    try:
+        return str(data)
+    except Exception:
+        return None
+
+
+def call_gemini_api(query, user=None, timeout=10):
+    """Call Gemini API for chatbot responses.
+
+    Uses the GEMINI_API_KEY environment variable.
+    """
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return None
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(query)
+        return response.text
+    except Exception as e:
+        logger.warning('Gemini API request failed: %s', e)
+        return None
+
+
+def get_chatbot_response(message, user_id=None):
+    """Get chatbot response, trying external API first, then Gemini, then fallback to basic chatbot."""
+    # Try external API first
+    external_response = call_external_chat_api(message, user_id)
+    if external_response:
+        return external_response
+
+    # Try Gemini API
+    gemini_response = call_gemini_api(message, user_id)
+    if gemini_response:
+        return gemini_response
+
+    # Fallback to basic chatbot
+    return chatbot.chat(message, user_id)

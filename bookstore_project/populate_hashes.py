@@ -1,7 +1,10 @@
 import os
 import django
 import imagehash
+import logging
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 # Setup Django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bookstore.settings')
@@ -15,13 +18,13 @@ def generate_image_hash(image_path):
         img = Image.open(image_path)
         hash_value = imagehash.phash(img)
         return str(hash_value)
-    except Exception as e:
-        print(f"Error processing image {image_path}: {e}")
+    except (OSError, IOError) as e:
+        logger.error(f"Error processing image {image_path}: {e}")
         return None
 
 def populate_book_hashes():
     """Populate image hashes for Book model."""
-    print("Populating image hashes for Book model...")
+    logger.info("Populating image hashes for Book model...")
     books = Book.objects.all()
     updated_count = 0
 
@@ -29,18 +32,18 @@ def populate_book_hashes():
         if book.cover_image_url:
             # For URL images, we'll skip for now as they require downloading
             # In a real implementation, you'd download and hash the images
-            print(f"Skipping URL image for book: {book.title}")
+            logger.info(f"Skipping URL image for book: {book.title}")
             continue
 
         # For local images, we would need to handle them differently
         # This is a placeholder for local image handling
-        print(f"Book {book.title} has no local image to hash")
+        logger.info(f"Book {book.title} has no local image to hash")
 
-    print(f"Updated {updated_count} books with image hashes")
+    logger.info(f"Updated {updated_count} books with image hashes")
 
 def populate_user_book_hashes():
     """Populate image hashes for UserBook model."""
-    print("Populating image hashes for UserBook model...")
+    logger.info("Populating image hashes for UserBook model...")
     user_books = UserBook.objects.filter(is_available=True)
     updated_count = 0
 
@@ -55,16 +58,16 @@ def populate_user_book_hashes():
                     user_book.image_hash = hash_value
                     user_book.save()
                     updated_count += 1
-                    print(f"Updated hash for user book: {user_book.title}")
+                    logger.info(f"Updated hash for user book: {user_book.title}")
                 else:
-                    print(f"Failed to generate hash for user book: {user_book.title}")
+                    logger.warning(f"Failed to generate hash for user book: {user_book.title}")
 
             except Exception as e:
-                print(f"Error processing user book {user_book.title}: {e}")
+                logger.error(f"Error processing user book {user_book.title}: {e}")
 
-    print(f"Updated {updated_count} user books with image hashes")
+    logger.info(f"Updated {updated_count} user books with image hashes")
 
 if __name__ == '__main__':
     populate_book_hashes()
     populate_user_book_hashes()
-    print("Image hash population completed!")
+    logger.info("Image hash population completed!")

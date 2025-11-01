@@ -1,12 +1,21 @@
 from django.core.management.base import BaseCommand
 from books.models import Book, UserBook
 from books.visual_search import extract_features_from_url, extract_features_from_path
+from django.conf import settings
 import os
 
 class Command(BaseCommand):
     help = 'Precompute VGG16 features for all books with images'
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Force recomputation of features even if they already exist',
+        )
+
     def handle(self, *args, **options):
+        force = options['force']
         self.stdout.write('Starting feature precomputation...')
 
         # Process Book model
@@ -14,9 +23,26 @@ class Command(BaseCommand):
         updated_books = 0
 
         for book in books_with_images:
-            if not book.image_features:  # Only process if features not already computed
+            if force or not book.image_features:  # Only process if features not already computed or force is True
                 try:
-                    features = extract_features_from_url(book.cover_image_url)
+                    cover = book.cover_image_url or ''
+                    features = None
+                    # If cover looks like a media path (local), try extracting from local file
+                    if cover.startswith(settings.MEDIA_URL) or cover.startswith('/media/') or cover.startswith('media/'):
+                        # Build local path from MEDIA_ROOT
+                        rel_path = cover.replace(settings.MEDIA_URL, '').lstrip('/')
+                        local_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+                        if os.path.exists(local_path):
+                            features = extract_features_from_path(local_path)
+                        else:
+                            # Try with simple join in case cover has leading /media/
+                            local_path = os.path.join(settings.BASE_DIR, cover.lstrip('/'))
+                            if os.path.exists(local_path):
+                                features = extract_features_from_path(local_path)
+                    else:
+                        # Fallback to URL extraction
+                        features = extract_features_from_url(cover)
+
                     if features:
                         book.image_features = features
                         book.save()
@@ -32,7 +58,7 @@ class Command(BaseCommand):
         updated_user_books = 0
 
         for user_book in user_books_with_images:
-            if not user_book.image_features:  # Only process if features not already computed
+            if force or not user_book.image_features:  # Only process if features not already computed or force is True
                 try:
                     image_path = user_book.cover_image.path
                     if os.path.exists(image_path):

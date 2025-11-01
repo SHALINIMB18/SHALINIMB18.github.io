@@ -2,8 +2,12 @@ import os
 import sys
 import re
 import requests
+import logging
 from pathlib import Path
 from urllib.parse import quote_plus
+
+logger = logging.getLogger(__name__)
+
 
 # Django setup
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -41,8 +45,8 @@ def find_openlibrary_cover_id(title, author=None):
                 return cover_i
         # fallback: sometimes 'edition_key' can be used but cover_i is best
         return None
-    except Exception as e:
-        print(f'OpenLibrary search error for "{title}" (author: {author}): {e}')
+    except (requests.RequestException, ValueError) as e:
+        logger.error(f'OpenLibrary search error for "{title}" (author: {author}): {e}')
         return None
 
 # Download cover by cover id: https://covers.openlibrary.org/b/id/{cover_id}-L.jpg
@@ -54,15 +58,15 @@ def download_cover_by_id(cover_id, out_path):
         with open(out_path, 'wb') as f:
             f.write(r.content)
         return True
-    except Exception as e:
-        print(f'Failed to download cover id {cover_id}: {e}')
+    except (requests.RequestException, OSError) as e:
+        logger.error(f'Failed to download cover id {cover_id}: {e}')
         return False
 
 
 def main(limit=None):
     books = Book.objects.all()
     total = books.count()
-    print(f'Total books: {total}')
+    logger.info(f'Total books: {total}')
     updated = 0
     tried = 0
     for book in books:
@@ -74,7 +78,7 @@ def main(limit=None):
             continue
         title = book.title
         author = book.author
-        print(f'Searching Open Library for: "{title}" by "{author}"')
+        logger.info(f'Searching Open Library for: "{title}" by "{author}"')
         cover_id = find_openlibrary_cover_id(title, author)
         if not cover_id:
             # try without author
@@ -86,11 +90,11 @@ def main(limit=None):
                 book.cover_image_url = f'/media/books/{fname}'
                 book.save()
                 updated += 1
-                print(f'Updated: {book.title} -> /media/books/{fname}')
+                logger.info(f'Updated: {book.title} -> /media/books/{fname}')
         else:
-            print(f'No cover found for "{title}"')
+            logger.info(f'No cover found for "{title}"')
         tried += 1
-    print(f'Done. Updated {updated} books (attempted {tried}).')
+    logger.info(f'Done. Updated {updated} books (attempted {tried}).')
 
 if __name__ == '__main__':
     # optional CLI arg: limit

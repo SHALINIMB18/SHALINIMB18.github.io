@@ -7,6 +7,11 @@ urlpatterns = [
     path('books/<int:pk>/', views.book_detail, name='book_detail'),
     path('books/<int:pk>/add-review/', views.add_review, name='add_review'),
     path('book-club/', views.book_club, name='book_club'),
+    path('book-club/post/<int:pk>/', views.post_detail, name='post_detail'),
+    path('book-club/create-post/', views.create_post, name='create_post'),
+    path('book-club/post/<int:post_id>/comment/', views.create_comment, name='create_comment'),
+    path('book-club/post/<int:post_id>/like/', views.like_post, name='like_post'),
+    path('book-club/comment/<int:comment_id>/like/', views.like_comment, name='like_comment'),
     path('signup/', views.signup, name='signup'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
@@ -32,6 +37,8 @@ urlpatterns = [
     path('api/send-chat-message/', views.api_send_chat_message, name='api_send_chat_message'),
     path('api/visual-search/', views.api_visual_search, name='api_visual_search'),
     path('api/process-payment/', views.api_process_payment, name='api_process_payment'),
+    path('api/payment/webhook/', views.api_payment_webhook, name='api_payment_webhook'),
+    path('api/welcome/', views.api_welcome, name='api_welcome'),
 
     # User book selling URLs
     path('sell-book/', views.sell_book, name='sell_book'),
@@ -41,4 +48,9 @@ urlpatterns = [
     path('buy-user-book/<int:pk>/', views.buy_user_book, name='buy_user_book'),
     path('user-book/<int:pk>/', views.user_book_detail, name='user_book_detail'),
     path('marketplace/', views.marketplace, name='marketplace'),
+    path('add-to-comparison/<int:pk>/', views.add_to_comparison, name='add_to_comparison'),
+    path('remove-from-comparison/<int:pk>/', views.remove_from_comparison, name='remove_from_comparison'),
+    path('comparison/', views.comparison, name='comparison'),
+    path('clear-comparison/', views.clear_comparison, name='clear_comparison'),
+    path('rate-seller/<int:user_book_id>/', views.rate_seller, name='rate_seller'),
 ]

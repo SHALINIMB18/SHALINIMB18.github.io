@@ -1,0 +1,244 @@
+{% extends 'books/base.html' %}
+
+{% block title %}{{ post.title }} - Book Club{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Post Header -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    {% if post.is_pinned %}
+                    <div class="alert alert-warning py-1 px-2 mb-3">
+                        <i class="fas fa-thumbtack"></i> Pinned Post
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h2 class="mb-2">{{ post.title }}</h2>
+                            <p class="text-muted mb-0">
+                                Posted by <strong>{{ post.author.username }}</strong> on {{ post.created_at|date:"M d, Y H:i" }}
+                                {% if post.updated_at != post.created_at %}
+                                • Edited {{ post.updated_at|date:"M d, Y H:i" }}
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="text-end">
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-outline-primary btn-sm like-btn"
+                                        data-url="{% url 'like_post' post.pk %}"
+                                        data-liked="{{ post_liked|yesno:'true,false' }}">
+                                    <i class="fas fa-heart"></i>
+                                    <span class="like-count">{{ post.like_count }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="post-content">
+                        {{ post.content|linebreaks }}
+                    </div>
+
+                    {% if post.is_moderated %}
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        This post has been moderated. Reason: {{ post.moderation_reason }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Comments Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comments"></i> Comments ({{ comments|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if user.is_authenticated %}
+                    <!-- Add Comment Form -->
+                    <form method="post" action="{% url 'create_comment' post.pk %}" class="mb-4">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="comment-content" class="form-label">Add a comment</label>
+                            <textarea class="form-control" id="comment-content" name="content" rows="3"
+                                      placeholder="Share your thoughts..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i> Post Comment
+                        </button>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <a href="{% url 'login' %}" class="alert-link">Log in</a> to join the discussion.
+                    </div>
+                    {% endif %}
+
+                    <!-- Comments List -->
+                    <div class="comments-list">
+                        {% for comment in comments %}
+                        <div class="comment mb-3 p-3 border rounded {% if comment.is_reply %}ms-4{% endif %}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <strong>{{ comment.author.username }}</strong>
+                                        <small class="text-muted ms-2">{{ comment.created_at|date:"M d, Y H:i" }}</small>
+                                        {% if comment.updated_at != comment.created_at %}
+                                        <small class="text-muted ms-1">(edited)</small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="comment-content mb-2">
+                                        {{ comment.content|linebreaks }}
+                                    </div>
+                                    {% if comment.is_moderated %}
+                                    <div class="alert alert-warning py-1 px-2">
+                                        <small><i class="fas fa-exclamation-triangle"></i> Moderated: {{ comment.moderation_reason }}</small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% if user.is_authenticated %}
+                                <button class="btn btn-outline-primary btn-sm ms-2 like-comment-btn"
+                                        data-url="{% url 'like_comment' comment.pk %}"
+                                        data-liked="{{ comment_likes|get_item:comment.id|yesno:'true,false' }}">
+                                    <i class="fas fa-heart"></i>
+                                    <span class="like-count">{{ comment.like_count }}</span>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-comments fa-2x text-muted mb-2"></i>
+                            <p class="text-muted">No comments yet. Be the first to share your thoughts!</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <!-- Post Stats -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar"></i> Post Stats</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="h4 mb-0">{{ post.like_count }}</div>
+                            <small class="text-muted">Likes</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 mb-0">{{ post.comment_count }}</div>
+                            <small class="text-muted">Comments</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="small text-muted">
+                        <div>Created: {{ post.created_at|date:"M d, Y H:i" }}</div>
+                        <div>Last activity: {{ post.recent_activity|date:"M d, Y H:i" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Author Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-user"></i> Author</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">{{ post.author.username }}</h6>
+                            <small class="text-muted">Forum member</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'book_club' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Back to Forum
+                        </a>
+                        {% if user.is_authenticated %}
+                        <a href="{% url 'create_post' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-plus"></i> Create New Post
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Like post functionality
+    const likeBtn = document.querySelector('.like-btn');
+    if (likeBtn) {
+        likeBtn.addEventListener('click', function() {
+            const url = this.dataset.url;
+            const isLiked = this.dataset.liked === 'true';
+            const likeCountEl = this.querySelector('.like-count');
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.dataset.liked = isLiked ? 'false' : 'true';
+                    this.classList.toggle('btn-primary', !isLiked);
+                    this.classList.toggle('btn-outline-primary', isLiked);
+                    likeCountEl.textContent = parseInt(likeCountEl.textContent) + (isLiked ? -1 : 1);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    }
+
+    // Like comment functionality
+    document.querySelectorAll('.like-comment-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const url = this.dataset.url;
+            const isLiked = this.dataset.liked === 'true';
+            const likeCountEl = this.querySelector('.like-count');
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.dataset.liked = isLiked ? 'false' : 'true';
+                    this.classList.toggle('btn-primary', !isLiked);
+                    this.classList.toggle('btn-outline-primary', isLiked);
+                    likeCountEl.textContent = parseInt(likeCountEl.textContent) + (isLiked ? -1 : 1);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    });
+});
+</script>
+{% endblock %}

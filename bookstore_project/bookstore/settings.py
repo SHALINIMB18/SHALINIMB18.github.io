@@ -121,9 +121,10 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Razorpay settings
-RAZORPAY_KEY_ID = 'rzp_test_8wKfJcQzHq8n4L'  # Test key
-RAZORPAY_KEY_SECRET = 'your-razorpay-secret'  # Replace with actual secret
+# Razorpay settings (read from environment where possible)
+import os
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_8wKfJcQzHq8n4L')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', 'your-razorpay-secret')
 
 # Razorpay test mode configuration
 RAZORPAY_CONFIG = {

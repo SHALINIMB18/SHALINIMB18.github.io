@@ -1,11 +1,15 @@
 import os
 import django
+import logging
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bookstore.settings')
 django.setup()
 
 from books.models import Book, Review, Order, UserProfile
 from django.contrib.auth.models import User
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 # Create sample books
 books_data = [
@@ -111,9 +115,13 @@ books_data = [
 ]
 
 for book_data in books_data:
-    Book.objects.get_or_create(
+    book, created = Book.objects.get_or_create(
         title=book_data['title'],
         defaults=book_data
     )
+    if created:
+        logger.info(f"Created new book: {book.title}")
+    else:
+        logger.info(f"Book already exists: {book.title}")
 
-print('Sample books created successfully!')
+logger.info('Sample books created successfully!')

@@ -1,6 +1,8 @@
 // Custom JavaScript for enhanced UI/UX with micro-interactions
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Debug: confirm this updated script is loaded in the browser
+    try { console.log('[debug] custom.js (v2) loaded. Chatbot endpoint: /api/chatbot/'); } catch(e) {}
     // Progress bar loader for page loads
     const progressBar = document.createElement('div');
     progressBar.className = 'progress-bar-loader';
@@ -113,21 +115,61 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers['Content-Type'] = 'application/json';
             }
 
-            // Send to API
-            fetch('/books/api/chatbot/', {
+            // Send to API with timeout and robust handling
+            const controller = new AbortController();
+            const signal = controller.signal;
+            const CLIENT_TIMEOUT_MS = 8000; // client-side timeout
+            const timeoutId = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
+
+                        fetch('/api/chatbot/', {
                 method: 'POST',
                 headers: headers,
-                body: requestData
+                body: requestData,
+                signal: signal
             })
-            .then(response => response.json())
-            .then(data => {
+            .then(response => {
+                clearTimeout(timeoutId);
                 recommendationLoader.classList.remove('show');
-                chatMessages.removeChild(typingIndicator);
+                // Remove typing indicator if still present
+                if (typingIndicator && typingIndicator.parentNode) {
+                    try { chatMessages.removeChild(typingIndicator); } catch(e) {}
+                }
+
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(text || 'Server error');
+                    });
+                }
+
+                // Try to parse JSON, but tolerate non-JSON
+                return response.text().then(txt => {
+                    try { return JSON.parse(txt); } catch(e) { return { response: txt }; }
+                });
+            })
+            .then(data => {
                 const botMessage = document.createElement('div');
                 botMessage.className = 'message bot';
                 botMessage.style.opacity = '0';
                 botMessage.style.transform = 'translateY(20px)';
-                botMessage.textContent = data.response;
+
+                let text = '';
+                if (!data) {
+                    text = 'Sorry, I did not get a response. Please try again.';
+                } else if (data.response) {
+                    text = data.response;
+                } else if (data.results && Array.isArray(data.results)) {
+                    // Visual search or structured response
+                    if (data.results.length === 0) text = 'No similar books found.';
+                    else {
+                        text = 'I found similar books: ' + data.results.slice(0,3).map(r => r.title).join(', ');
+                    }
+                } else if (typeof data === 'string') {
+                    text = data;
+                } else {
+                    text = JSON.stringify(data).slice(0, 500);
+                }
+
+                botMessage.textContent = text;
                 chatMessages.appendChild(botMessage);
 
                 setTimeout(() => {
@@ -138,13 +180,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 10);
             })
             .catch(error => {
+                clearTimeout(timeoutId);
                 recommendationLoader.classList.remove('show');
-                chatMessages.removeChild(typingIndicator);
+                if (typingIndicator && typingIndicator.parentNode) {
+                    try { chatMessages.removeChild(typingIndicator); } catch(e) {}
+                }
+
                 const errorMessage = document.createElement('div');
                 errorMessage.className = 'message bot';
                 errorMessage.style.opacity = '0';
                 errorMessage.style.transform = 'translateY(20px)';
-                errorMessage.textContent = 'Sorry, I encountered an error. Please try again.';
+
+                if (error.name === 'AbortError') {
+                    errorMessage.textContent = 'Request timed out. Please try again.';
+                } else {
+                    errorMessage.textContent = 'Sorry, I encountered an error. Please try again.';
+                    console.error('Chatbot request error:', error);
+                }
+
                 chatMessages.appendChild(errorMessage);
 
                 setTimeout(() => {
